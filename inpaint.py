@@ -21,7 +21,7 @@ for im in os.listdir(root):
 
     # Convert the original image to grayscale
     grayScale = cv2.cvtColor( src, cv2.COLOR_RGB2GRAY )
-    cv2_imshow(grayScale)
+    # cv2_imshow(grayScale)
 
     # Kernel for the morphological filtering
     kernel = cv2.getStructuringElement(1,(17,17))
@@ -36,5 +36,6 @@ for im in os.listdir(root):
 
     # inpaint the original image depending on the mask
     dst = cv2.inpaint(src,thresh2,1,cv2.INPAINT_TELEA)
-    cv2_imshow(dst)
-    cv2.imwrite(dst+im+".png", dst, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+    # cv2_imshow(dst)
+    print([int(cv2.IMWRITE_JPEG_QUALITY), 90])
+    cv2.imwrite("teste.png", dst, [int(cv2.IMWRITE_JPEG_QUALITY), 90])

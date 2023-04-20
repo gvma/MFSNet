@@ -23,6 +23,11 @@ from thop import profile
 from thop import clever_format
 
 
+model_urls = {
+    'res2net50_v1b_26w_4s': 'https://shanghuagao.oss-cn-beijing.aliyuncs.com/res2net/res2net50_v1b_26w_4s-3cf99910.pth',
+    'res2net101_v1b_26w_4s': 'https://shanghuagao.oss-cn-beijing.aliyuncs.com/res2net/res2net101_v1b_26w_4s-0812c246.pth',
+}
+
 class Bottle2neck(nn.Module):
     expansion = 4
 
@@ -183,10 +188,12 @@ def res2net101_v1b(pretrained=False, **kwargs):
 def res2net50_v1b_26w_4s(pretrained=False, **kwargs):
     
     model = Res2Net(Bottle2neck, [3, 4, 6, 3], baseWidth=26, scale=4, **kwargs)
-    if pretrained:
-        model_state = torch.load('Snapshots/Res2net/res2net50.pth')
-        model.load_state_dict(model_state)
+    # if pretrained:
+        # model_state = torch.load('Snapshots/Res2net/res2net50.pth')
+        # model.load_state_dict(model_state)
         # lib.load_state_dict(model_zoo.load_url(model_urls['res2net50_v1b_26w_4s']))
+        # model.load_state_dict(model_zoo.load_url(model_urls['res2net50_v1b_26w_4s']))
+
     return model
 
 
@@ -308,7 +315,7 @@ class MFSNet(nn.Module):
     def __init__(self, channel=32,n_class=1):
         super(MFSNet, self).__init__()
         # ---- ResNet Backbone ----
-        self.resnet = res2net50_v1b_26w_4s(pretrained=True)
+        self.resnet = res2net50_v1b_26w_4s(pretrained=False)
         # ---- Receptive Field Block like module ----
         self.rfb2_1 = RFB_modified(512, channel)
         self.rfb3_1 = RFB_modified(1024, channel)
@@ -585,4 +592,5 @@ for i in range(test_loader.size):
         lateral_map_5=lateral_map_5.data.cpu().numpy().squeeze()
         res = (res - res.min()) / (res.max() - res.min() + 1e-8)
         
-        io.imsave(save_path+name, img_as_ubyte(res))
+        print('Salvando em ' + save_path+name)
+        io.imsave(save_path+'/'+name, img_as_ubyte(res))

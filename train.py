@@ -16,6 +16,13 @@ import torch.nn.functional as F
 import numpy as np
 from thop import profile
 from thop import clever_format
+from skimage import img_as_ubyte
+import skimage.io as io
+
+model_urls = {
+    'res2net50_v1b_26w_4s': 'https://shanghuagao.oss-cn-beijing.aliyuncs.com/res2net/res2net50_v1b_26w_4s-3cf99910.pth',
+    'res2net101_v1b_26w_4s': 'https://shanghuagao.oss-cn-beijing.aliyuncs.com/res2net/res2net101_v1b_26w_4s-0812c246.pth',
+}
 
 __all__ = ['Res2Net', 'res2net50_v1b', 'res2net101_v1b', 'res2net50_v1b_26w_4s']
 
@@ -242,9 +249,10 @@ def res2net50_v1b_26w_4s(pretrained=False, **kwargs):
     
     model = Res2Net(Bottle2neck, [3, 4, 6, 3], baseWidth=26, scale=4, **kwargs)
     if pretrained:
-        model_state = torch.load('Snapshots/Res2net/res2net50.pth')
-        model.load_state_dict(model_state)
-        # lib.load_state_dict(model_zoo.load_url(model_urls['res2net50_v1b_26w_4s']))
+        # model_state = torch.load('Snapshots/Res2net/res2net50.pth')
+        # model.load_state_dict(model_state)
+        # model = res2net50(pretrained=True)
+        model.load_state_dict(model_zoo.load_url(model_urls['res2net50_v1b_26w_4s']))
     return model
 
 
@@ -402,7 +410,7 @@ class MFSNet(nn.Module):
     def __init__(self, channel=32,n_class=1):
         super(MFSNet, self).__init__()
         # ---- ResNet Backbone ----
-        self.resnet = res2net50_v1b_26w_4s(pretrained=True)
+        self.resnet = res2net50_v1b_26w_4s(pretrained=False)
         # ---- Receptive Field Block like module ----
         self.rfb2_1 = RFB_modified(512, channel)
         self.rfb3_1 = RFB_modified(1024, channel)
@@ -510,30 +518,32 @@ def get_loader(image_root, gt_root, batchsize, trainsize, shuffle=True, num_work
 
 
 class test_dataset:
-    def __init__(self, image_root, gt_root, testsize):
+    def __init__(self, image_root, testsize):
         self.testsize = testsize
         self.images = [image_root + f for f in os.listdir(image_root) if f.endswith('.jpg') or f.endswith('.png')]
-        self.gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith('.tif') or f.endswith('.png') or f.endswith('.PNG')]
+        # self.gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith('.jpg') or f.endswith('.png')]
         self.images = sorted(self.images)
-        self.gts = sorted(self.gts)
+        # self.gts = sorted(self.gts)
         self.transform = transforms.Compose([
             transforms.Resize((self.testsize, self.testsize)),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406],
                                  [0.229, 0.224, 0.225])])
-        self.gt_transform = transforms.ToTensor()
+        # self.gt_transform = transforms.ToTensor()
         self.size = len(self.images)
         self.index = 0
 
     def load_data(self):
         image = self.rgb_loader(self.images[self.index])
+        # ori_size = image.size
         image = self.transform(image).unsqueeze(0)
-        gt = self.binary_loader(self.gts[self.index])
+        # gt = self.binary_loader(self.gts[self.index])
         name = self.images[self.index].split('/')[-1]
         if name.endswith('.jpg'):
             name = name.split('.jpg')[0] + '.png'
         self.index += 1
-        return image, gt, name
+
+        return image, name
 
     def rgb_loader(self, path):
         with open(path, 'rb') as f:
@@ -651,7 +661,35 @@ if __name__ == '__main__':
 
     print("#"*20, "Start Training", "#"*20)
 
-    for epoch in range(1, opt.epoch):
+    # TODO mudar o numero de epocas no range
+    for epoch in range(1, 2):
         adjust_lr(optimizer, opt.lr, epoch, opt.decay_rate, opt.decay_epoch)
         train(train_loader, model, optimizer, epoch)
 
+    # model.eval()
+    # os.makedirs('test/outputs', exist_ok=True)
+    # image_root = '/home/guilherme/Documents/projects/MFSNet/data/test/images/'
+    # gt_root = '/home/guilherme/Documents/projects/MFSNet/data/test/masks/'
+    # test_loader = test_dataset(image_root, 1)
+    
+    # for i in range(test_loader.size):
+    #     image, name = test_loader.load_data()
+
+    #     image = image.cuda()
+
+    #     print(image.size())
+    #     print(name)
+    #     lateral_map_5, lateral_map_4, lateral_map_3, lateral_map_2, lateral_edge = model(image)
+
+    #     res = lateral_map_2
+        
+    #     res = res.sigmoid().data.cpu().numpy().squeeze()
+    #     lateral_edge=lateral_edge.data.cpu().numpy().squeeze()
+    #     inv_map=lateral_map_4.max()-lateral_map_4
+    #     inv_map=inv_map.sigmoid().data.cpu().numpy().squeeze()
+    #     lateral_map_4=lateral_map_4.sigmoid().data.cpu().numpy().squeeze()
+    #     lateral_map_3=lateral_map_3.data.cpu().numpy().squeeze()
+    #     lateral_map_5=lateral_map_5.data.cpu().numpy().squeeze()
+    #     res = (res - res.min()) / (res.max() - res.min() + 1e-8)
+        
+    #     io.imsave('test/outputs'+name, img_as_ubyte(res))
