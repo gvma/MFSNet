@@ -1,3 +1,6 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+
 import torch
 import os, argparse
 import torch.utils.data as data
@@ -9,6 +12,7 @@ import numpy as np
 from PIL import Image
 import torchvision.transforms as transforms
 from sklearn.metrics import jaccard_score
+import matplotlib.pyplot as plt
 
 from models.mfsnet import MFSNet
 from models.resnet import res2net50_v1b_26w_4s
@@ -44,12 +48,16 @@ model.eval()
 
 os.makedirs(save_path, exist_ok=True)
 image_root = '{}/images/'.format(data_path)
-gt_root = '{}/masks/'.format(data_path)
-test_loader = TestDatasetLoader(image_root, opt.testsize)
+mask_root = '{}/masks/'.format(data_path)
+test_loader = TestDatasetLoader(image_root, mask_root, opt.testsize)
 
 for i in range(test_loader.size):
         image, mask, name = test_loader.load_data()
         mask_im_arr = np.array(mask)
+        mask_im_arr = np.reshape(mask_im_arr, (352, 352))
+        mask_im_arr = mask_im_arr.flatten()
+        mask_im_arr = mask_im_arr.astype(np.uint8)
+
         image_cpu = image.numpy().squeeze()
 
         image = image.cuda()
@@ -65,13 +73,11 @@ for i in range(test_loader.size):
         lateral_map_4=lateral_map_4.sigmoid().data.cpu().numpy().squeeze()
         lateral_map_3=lateral_map_3.data.cpu().numpy().squeeze()
         lateral_map_5=lateral_map_5.data.cpu().numpy().squeeze()
-        
-        image_cpu = img_as_ubyte((image_cpu - image_cpu.min()) / (image_cpu.max() - image_cpu.min() + 1e-8))
-        res = img_as_ubyte((res - res.min()) / (res.max() - res.min() + 1e-8))
-        
-        # (3, 352, 352)
-        # (352, 352)
 
-        print(jaccard_score(image_cpu[0], res, average='micro'))
+        res[res >= 0.5] = 1
+        res[res < 0.5] = 0
+        res = res.flatten()
+        res = res.astype(np.uint8)
+
+        print(jaccard_score(mask_im_arr, res, average='micro'))
         print('Salvando em ' + save_path+name)
-        io.imsave(save_path+'/'+name, res)
