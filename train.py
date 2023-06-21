@@ -14,8 +14,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from thop import profile
-from thop import clever_format
 from skimage import img_as_ubyte
 import skimage.io as io
 

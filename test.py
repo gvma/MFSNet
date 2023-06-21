@@ -13,6 +13,7 @@ from PIL import Image
 import torchvision.transforms as transforms
 from sklearn.metrics import jaccard_score
 import matplotlib.pyplot as plt
+from torchmetrics import Dice
 
 from mfsnet import MFSNet
 from resnet import res2net50_v1b_26w_4s
@@ -51,12 +52,19 @@ image_root = '{}/images/'.format(data_path)
 mask_root = '{}/masks/'.format(data_path)
 test_loader = TestDatasetLoader(image_root, mask_root, opt.testsize)
 
+best_jaccard_score = -1
+best_dice_score = -1
+
 for i in range(test_loader.size):
         image, mask, name = test_loader.load_data()
+
         mask_im_arr = np.array(mask)
         mask_im_arr = np.reshape(mask_im_arr, (352, 352))
         mask_im_arr = mask_im_arr.flatten()
         mask_im_arr = mask_im_arr.astype(np.uint8)
+
+        mask = mask.cuda(0)
+        mask = mask.type(torch.int64)
 
         image_cpu = image.numpy().squeeze()
 
@@ -66,6 +74,10 @@ for i in range(test_loader.size):
 
         res = lateral_map_2
         
+        res_gpu = res.sigmoid().data
+        res_gpu[res_gpu >= 0.5] = 1
+        res_gpu[res_gpu < 0.5] = 0
+        
         res = res.sigmoid().data.cpu().numpy().squeeze()
         lateral_edge=lateral_edge.data.cpu().numpy().squeeze()
         inv_map=lateral_map_4.max()-lateral_map_4
@@ -74,9 +86,25 @@ for i in range(test_loader.size):
         lateral_map_3=lateral_map_3.data.cpu().numpy().squeeze()
         lateral_map_5=lateral_map_5.data.cpu().numpy().squeeze()
 
+        # Use this to save images
+        # image_cpu = img_as_ubyte((image_cpu - image_cpu.min()) / (image_cpu.max() - image_cpu.min() + 1e-8))
+        # x = img_as_ubyte((res - res.min()) / (res.max() - res.min() + 1e-8))
+        # io.imsave('/home/aaa/projects/serpens/MFSNet/teste.jpg', x)
+
         res[res >= 0.5] = 1
         res[res < 0.5] = 0
         res = res.flatten()
         res = res.astype(np.uint8)
-
-        print(jaccard_score(mask_im_arr, res, average='micro'))
+        
+        j_score = jaccard_score(mask_im_arr, res, average='micro')
+        if j_score > best_jaccard_score:
+            best_jaccard_score = j_score
+        
+        dice = Dice(average='micro').to(torch.device("cuda", 0))
+        d_score = dice(res_gpu, mask)
+        dice_score = d_score.item()
+        if dice_score > best_dice_score:
+            best_dice_score = dice_score
+        
+print('Dice score: {}'.format(best_dice_score))
+print('Jaccard score: {}'.format(best_jaccard_score))

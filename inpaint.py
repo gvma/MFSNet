@@ -12,30 +12,36 @@ parser.add_argument('--destination', type=str, default="inpainted_ims/", help='D
 args = parser.parse_args()
 
 root = args.root
-dst = args.destination
-if not os.path.exists(dst):
-    os.makedirs(dst)
+destination = args.destination
+if not os.path.exists(destination):
+    os.makedirs(destination)
 
 for im in os.listdir(root):
+    print('Image: {}'.format(root + im))
     src=cv2.imread(root+im)
-
     # Convert the original image to grayscale
+    print('Converting to grayscale:')
     grayScale = cv2.cvtColor( src, cv2.COLOR_RGB2GRAY )
     # cv2_imshow(grayScale)
 
     # Kernel for the morphological filtering
+    print('Kernel step:')
     kernel = cv2.getStructuringElement(1,(17,17))
     
     # Perform the blackHat filtering on the grayscale image to find the 
     # hair countours
+    print('Blackhat filtering:')
     blackhat = cv2.morphologyEx(grayScale, cv2.MORPH_BLACKHAT, kernel)
 
     # intensify the hair countours in preparation for the inpainting 
     # algorithm
+    print('Threshold:')
     ret,thresh2 = cv2.threshold(blackhat,10,255,cv2.THRESH_BINARY)
 
+    print('Inpainting image:')
     # inpaint the original image depending on the mask
-    dst = cv2.inpaint(src,thresh2,1,cv2.INPAINT_TELEA)
-    # cv2_imshow(dst)
-    print([int(cv2.IMWRITE_JPEG_QUALITY), 90])
-    cv2.imwrite("teste.png", dst, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+    destination = cv2.inpaint(src,thresh2,1,cv2.INPAINT_TELEA)
+
+    print('Writing image {}'.format(im))
+    cv2.imwrite('data/inpaint/inpainted/inpainted_' + im, destination, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+    print('############################')
