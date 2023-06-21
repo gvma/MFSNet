@@ -14,8 +14,8 @@ import torchvision.transforms as transforms
 from sklearn.metrics import jaccard_score
 import matplotlib.pyplot as plt
 
-from models.mfsnet import MFSNet
-from models.resnet import res2net50_v1b_26w_4s
+from mfsnet import MFSNet
+from resnet import res2net50_v1b_26w_4s
 from datasets.test_dataset import TestDatasetLoader
 
 model_urls = {
@@ -80,4 +80,3 @@ for i in range(test_loader.size):
         res = res.astype(np.uint8)
 
         print(jaccard_score(mask_im_arr, res, average='micro'))
-        print('Salvando em ' + save_path+name)

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.resnet import res2net50_v1b_26w_4s
+from resnet import res2net50_v1b_26w_4s
 
 from rfbs.rfb_modified import RFB_modified
 from convs.basic_conv_2d import BasicConv2d
