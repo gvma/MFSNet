@@ -43,5 +43,5 @@ for im in os.listdir(root):
     destination = cv2.inpaint(src,thresh2,1,cv2.INPAINT_TELEA)
 
     print('Writing image {}'.format(im))
-    cv2.imwrite('data/inpaint/inpainted/inpainted_' + im, destination, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+    cv2.imwrite('data/inpaint/test/inpainted/' + im, destination, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
     print('############################')

@@ -54,6 +54,10 @@ test_loader = TestDatasetLoader(image_root, mask_root, opt.testsize)
 
 best_jaccard_score = -1
 best_dice_score = -1
+avg_dice_score = 0
+avg_jaccard_score = 0
+
+f = open('test_out/test_log.txt', 'w')
 
 for i in range(test_loader.size):
         image, mask, name = test_loader.load_data()
@@ -89,7 +93,7 @@ for i in range(test_loader.size):
         # Use this to save images
         # image_cpu = img_as_ubyte((image_cpu - image_cpu.min()) / (image_cpu.max() - image_cpu.min() + 1e-8))
         # x = img_as_ubyte((res - res.min()) / (res.max() - res.min() + 1e-8))
-        # io.imsave('/home/aaa/projects/serpens/MFSNet/teste.jpg', x)
+        # io.imsave('path/to/file/{}'.format(name), x)
 
         res[res >= 0.5] = 1
         res[res < 0.5] = 0
@@ -106,5 +110,15 @@ for i in range(test_loader.size):
         if dice_score > best_dice_score:
             best_dice_score = dice_score
         
-print('Dice score: {}'.format(best_dice_score))
-print('Jaccard score: {}'.format(best_jaccard_score))
+        avg_dice_score += dice_score
+        avg_jaccard_score += j_score
+        
+        f.write('Dice score image {}: {}\n'.format(name, dice_score))
+        f.write('Jaccard score image {}: {}\n'.format(name, j_score))
+        f.write('======================================================================\n')
+
+f.write('Best Dice score: {}\n'.format(best_dice_score))
+f.write('Best Jaccard score: {}\n'.format(best_jaccard_score))
+f.write('Average Dice score: {}\n'.format(avg_dice_score / test_loader.size))
+f.write('Average Jaccard score: {}\n'.format(avg_jaccard_score / test_loader.size))
+f.close()

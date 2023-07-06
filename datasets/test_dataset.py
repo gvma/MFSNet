@@ -31,7 +31,7 @@ class TestDatasetLoader:
         mask = self.binary_loader(self.masks[self.index])
         mask = self.mask_transform(mask).unsqueeze(0)
         
-        name = self.images[0][self.index].split('/')[-1]
+        name = self.images[self.index].split('/')[-1]
         if name.endswith('.jpg'):
             name = name.split('.jpg')[0] + '.png'
         self.index += 1

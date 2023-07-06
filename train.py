@@ -133,7 +133,7 @@ if __name__ == '__main__':
 
     print("#"*20, "Start Training", "#"*20)
 
-    for epoch in range(100):
+    for epoch in range(150):
         adjust_lr(optimizer, opt.lr, epoch, opt.decay_rate, opt.decay_epoch)
         train(train_loader, model, optimizer, epoch)
 
