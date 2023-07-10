@@ -16,10 +16,14 @@ import torch.nn.functional as F
 import numpy as np
 from skimage import img_as_ubyte
 import skimage.io as io
+from torchmetrics import Dice
+from sklearn.metrics import jaccard_score
 
 from avg.avg_meter import AvgMeter
 from mfsnet import MFSNet
 from datasets.skin_dataset import get_loader
+from datasets.test_dataset import TestDatasetLoader
+
 
 def clip_gradient(optimizer, grad_clip):
     
@@ -94,6 +98,66 @@ def train(train_loader, model, optimizer, epoch):
         torch.save(model.state_dict(), save_path + 'MFSNet.pth')
         print('[Saving Snapshot:]', save_path + 'MFSNet.pth')
 
+def eval(test_loader, model):
+    print
+    best_jaccard_score = -1
+    best_dice_score = -1
+    avg_dice_score = 0
+    avg_jaccard_score = 0
+
+    print(test_loader.size)
+    #TODO: Make test loader similar to training loader
+    for i in range(test_loader.size):
+            image, mask, name = test_loader.load_data()
+
+            mask_im_arr = np.array(mask)
+            mask_im_arr = np.reshape(mask_im_arr, (352, 352))
+            mask_im_arr = mask_im_arr.flatten()
+            mask_im_arr = mask_im_arr.astype(np.uint8)
+
+            mask = mask.cuda(0)
+            mask = mask.type(torch.int64)
+
+            image_cpu = image.numpy().squeeze()
+
+            image = image.cuda()
+
+            lateral_map_5, lateral_map_4, lateral_map_3, lateral_map_2, lateral_edge = model(image)
+
+            res = lateral_map_2
+            
+            res_gpu = res.sigmoid().data
+            res_gpu[res_gpu >= 0.5] = 1
+            res_gpu[res_gpu < 0.5] = 0
+            
+            res = res.sigmoid().data.cpu().numpy().squeeze()
+            lateral_edge=lateral_edge.data.cpu().numpy().squeeze()
+            inv_map=lateral_map_4.max()-lateral_map_4
+            inv_map=inv_map.sigmoid().data.cpu().numpy().squeeze()
+            lateral_map_4=lateral_map_4.sigmoid().data.cpu().numpy().squeeze()
+            lateral_map_3=lateral_map_3.data.cpu().numpy().squeeze()
+            lateral_map_5=lateral_map_5.data.cpu().numpy().squeeze()
+
+            res[res >= 0.5] = 1
+            res[res < 0.5] = 0
+            res = res.flatten()
+            res = res.astype(np.uint8)
+            
+            j_score = jaccard_score(mask_im_arr, res, average='micro')
+            if j_score > best_jaccard_score:
+                best_jaccard_score = j_score
+            
+            dice = Dice(average='micro').to(torch.device("cuda", 0))
+            d_score = dice(res_gpu, mask)
+            dice_score = d_score.item()
+            if dice_score > best_dice_score:
+                best_dice_score = dice_score
+            
+            avg_dice_score += dice_score
+            avg_jaccard_score += j_score
+    print('Average Dice score: ', avg_dice_score/test_loader.size)
+    print('Average Jaccard socre: ', avg_jaccard_score/test_loader.size)
+    return avg_dice_score, avg_jaccard_score
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -115,6 +179,10 @@ if __name__ == '__main__':
                         default='train', help='path to train dataset')
     parser.add_argument('--train_save', type=str,
                         default='MFSNet')
+    parser.add_argument('--test_path', type=str,
+                        default='data/test')
+    parser.add_argument('--testsize', type=int,
+                        default=352, help='training dataset size')
     opt = parser.parse_args()
 
     # ---- build models ----
@@ -125,17 +193,25 @@ if __name__ == '__main__':
     params = model.parameters()
     optimizer = torch.optim.Adam(params, opt.lr)
 
-    image_root = '{}/images/'.format(opt.train_path)
-    gt_root = '{}/masks/'.format(opt.train_path)
+    image_root_train= '{}/images/'.format(opt.train_path)
+    gt_root_train = '{}/masks/'.format(opt.train_path)
 
-    train_loader = get_loader(image_root, gt_root, batchsize=opt.batchsize, trainsize=opt.trainsize)
+    image_root_test= '{}/images/'.format(opt.test_path)
+    gt_root_test = '{}/masks/'.format(opt.test_path)
+
+    train_loader = get_loader(image_root_train, gt_root_train, batchsize=opt.batchsize, trainsize=opt.trainsize)
+    test_loader = TestDatasetLoader(image_root_test, gt_root_test, opt.testsize)
     total_step = len(train_loader)
-
+    eval_step = 10
     print("#"*20, "Start Training", "#"*20)
 
     for epoch in range(150):
         adjust_lr(optimizer, opt.lr, epoch, opt.decay_rate, opt.decay_epoch)
         train(train_loader, model, optimizer, epoch)
+        if epoch % eval_step == 0:
+            print("#"*20, "Start Eval", "#"*20)
+            eval(test_loader, model)
+
 
     # model.eval()
     # os.makedirs('test/outputs', exist_ok=True)
