@@ -12,12 +12,12 @@ import numpy as np
 from PIL import Image
 import torchvision.transforms as transforms
 from sklearn.metrics import jaccard_score
-import matplotlib.pyplot as plt
 from torchmetrics import Dice
 
 from mfsnet import MFSNet
 from resnet import res2net50_v1b_26w_4s
-from datasets.test_dataset import TestDatasetLoader
+from datasets.skin_dataset import get_loader
+
 
 model_urls = {
     'res2net50_v1b_26w_4s': 'https://shanghuagao.oss-cn-beijing.aliyuncs.com/res2net/res2net50_v1b_26w_4s-3cf99910.pth',
@@ -31,8 +31,8 @@ if __name__ == '__main__':
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--testsize', type=int, default=352, help='testing size')
-parser.add_argument('--model_path', type=str, default='./Snapshots/MFSNet/MFSNet.pth')
-parser.add_argument('--data_path', type=str, default='test', help='Directory of test images')
+parser.add_argument('--model_path', type=str, default='weights/best_epoch.pth')
+parser.add_argument('--data_path', type=str, default='data/test', help='Directory of test images')
 parser.add_argument('--save_path', type=str, default='test/outputs', help='Directory where prediction masks will be saved.')
 
 
@@ -48,19 +48,21 @@ model.cuda()
 model.eval()
 
 os.makedirs(save_path, exist_ok=True)
+batchsize  = 8
+trainsize = 352
 image_root = '{}/images/'.format(data_path)
-mask_root = '{}/masks/'.format(data_path)
-test_loader = TestDatasetLoader(image_root, mask_root, opt.testsize)
+gt_root = '{}/masks/'.format(data_path)
+test_loader = test_loader = get_loader(image_root, gt_root,batchsize=batchsize,trainsize=352)
 
 best_jaccard_score = -1
 best_dice_score = -1
 avg_dice_score = 0
 avg_jaccard_score = 0
 
-f = open('test_out/test_log.txt', 'w')
+#f = open('test_out/test_log.txt', 'w')
 
-for i in range(test_loader.size):
-        image, mask, name = test_loader.load_data()
+for i, pack in enumerate(test_loader):
+        image, mask = pack
 
         mask_im_arr = np.array(mask)
         mask_im_arr = np.reshape(mask_im_arr, (352, 352))
@@ -90,6 +92,7 @@ for i in range(test_loader.size):
         lateral_map_3=lateral_map_3.data.cpu().numpy().squeeze()
         lateral_map_5=lateral_map_5.data.cpu().numpy().squeeze()
 
+        #TODO: get image name
         # Use this to save images
         # image_cpu = img_as_ubyte((image_cpu - image_cpu.min()) / (image_cpu.max() - image_cpu.min() + 1e-8))
         # x = img_as_ubyte((res - res.min()) / (res.max() - res.min() + 1e-8))
@@ -113,12 +116,15 @@ for i in range(test_loader.size):
         avg_dice_score += dice_score
         avg_jaccard_score += j_score
         
-        f.write('Dice score image {}: {}\n'.format(name, dice_score))
-        f.write('Jaccard score image {}: {}\n'.format(name, j_score))
-        f.write('======================================================================\n')
+        # f.write('Dice score image {}: {}\n'.format(name, dice_score))
+        # f.write('Jaccard score image {}: {}\n'.format(name, j_score))
+        # f.write('======================================================================\n')
 
-f.write('Best Dice score: {}\n'.format(best_dice_score))
-f.write('Best Jaccard score: {}\n'.format(best_jaccard_score))
-f.write('Average Dice score: {}\n'.format(avg_dice_score / test_loader.size))
-f.write('Average Jaccard score: {}\n'.format(avg_jaccard_score / test_loader.size))
-f.close()
+
+print('Average Dice score: ', avg_dice_score/len(test_loader))
+print('Average Jaccard socre: ', avg_jaccard_score/len(test_loader))
+# f.write('Best Dice score: {}\n'.format(best_dice_score))
+# f.write('Best Jaccard score: {}\n'.format(best_jaccard_score))
+# f.write('Average Dice score: {}\n'.format(avg_dice_score / len(test_loader)))
+# f.write('Average Jaccard score: {}\n'.format(avg_jaccard_score / len(test_loader.size)))
+# f.close()
