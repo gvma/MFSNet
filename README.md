@@ -1,6 +1,31 @@
 # MFSNet
 This repository contains the official implementation of our paper titled "MFSNet: A Multi Focus Segmentation Network for Skin Lesion Segmentation" under peer review in Pattern Recognition, Elsevier.
 
+# How to install
+
+First create a new env
+```
+conda create -n mfsnet python=3.9
+```
+
+Activate the new env
+
+```
+conda activate mfsnet
+```
+
+Than install pytorch:
+```
+pip install torch==1.12.1+cu116 torchvision==0.13.1+cu116 --extra-index-url https://download.pytorch.org/whl/cu116
+```
+
+Finally install requirements
+
+```
+pip install -r requirements.txt
+```
+
+
 # Preprocessing
 To run the script for inpainting, run the following using the command prompt:
 

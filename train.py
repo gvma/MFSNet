@@ -24,6 +24,7 @@ from mfsnet import MFSNet
 from datasets.skin_dataset import get_loader
 
 
+
 def clip_gradient(optimizer, grad_clip):
     
     for group in optimizer.param_groups:
@@ -172,7 +173,7 @@ if __name__ == '__main__':
     parser.add_argument('--decay_epoch', type=int,
                         default=25, help='every n epochs decay learning rate')
     parser.add_argument('--train_path', type=str,
-                        default='train', help='path to train dataset')
+                        default='data/train', help='path to train dataset')
     parser.add_argument('--train_save', type=str,
                         default='MFSNet')
     parser.add_argument('--test_path', type=str,
@@ -211,4 +212,3 @@ if __name__ == '__main__':
                 best_dice = dice
                 torch.save(model.state_dict(), save_path + 'best_epoch.pth')
                 print('[Saving Actual Best Model:]', save_path + 'best_epoch.pth')   
-
